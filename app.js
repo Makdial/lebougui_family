@@ -7,6 +7,7 @@
   let currentFilter = 'all';
 
   function loadProducts(){
+    if (window.firebaseReady && window.db) return;
     try {
       const raw = localStorage.getItem(STORAGE_KEY);
       products = raw ? JSON.parse(raw) : [];
@@ -55,6 +56,15 @@
       btn.addEventListener('click', (e) => {
         e.stopPropagation();
         const id = btn.getAttribute('data-id');
+        if (window.firebaseReady && window.db) {
+          window.db.collection('products').doc(id).delete().then(() => {
+            showToast(window.t('toast_deleted'));
+          }).catch((err) => {
+            console.error(err);
+            showToast('Delete failed.');
+          });
+          return;
+        }
         products = products.filter(p => p.id !== id);
         saveProducts();
         renderGallery();
@@ -114,7 +124,7 @@
     reader.readAsDataURL(file);
   }
 
-  document.getElementById('uploadForm').addEventListener('submit', (e) => {
+  document.getElementById('uploadForm').addEventListener('submit', async (e) => {
     e.preventDefault();
     const name = document.getElementById('uplName').value.trim();
     if(!name){ showToast(window.t('toast_needname')); return; }
@@ -128,6 +138,24 @@
       image: currentFileData,
       date: new Date().toISOString(),
     };
+
+    if (window.firebaseReady && window.storage && window.db) {
+      try {
+        const ref = window.storage.ref().child('products/' + prod.id);
+        await ref.putString(prod.image, 'data_url');
+        prod.image = await ref.getDownloadURL();
+        await window.db.collection('products').doc(prod.id).set(prod);
+        currentFileData = null;
+        closeModal();
+        showToast(window.t('toast_saved'));
+        return;
+      } catch (err) {
+        console.error(err);
+        showToast('Upload failed. Check Firebase config/rules.');
+        return;
+      }
+    }
+
     products.push(prod);
     saveProducts();
     currentFileData = null;
@@ -574,12 +602,23 @@
        saveProducts = function(){ origSave(); try { bc.postMessage('updated'); } catch(e){} }
      } catch(e){}
    }
-  loadProducts();
-  // seed a couple of demo products if empty (optional)
-  if(products.length === 0){
-    // no seed, keep empty
+  if (window.firebaseReady && window.db) {
+    window.db.collection('products').onSnapshot((snap) => {
+      products = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+      if (typeof window.renderGallery === 'function') window.renderGallery();
+    }, (err) => {
+      console.error('Firestore listen failed:', err);
+      loadProducts();
+      if (typeof window.renderGallery === 'function') window.renderGallery();
+    });
+  } else {
+    loadProducts();
+    // seed a couple of demo products if empty (optional)
+    if(products.length === 0){
+      // no seed, keep empty
+    }
+    renderGallery();
   }
-  renderGallery();
   window.applyI18n();
 
   // expose
