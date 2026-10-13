@@ -56,7 +56,8 @@
       btn.addEventListener('click', (e) => {
         e.stopPropagation();
         const id = btn.getAttribute('data-id');
-        if (window.firebaseReady && window.db) {
+        console.info('Lebougui: firebaseReady =', !!window.firebaseReady);
+  if (window.firebaseReady && window.db) {
           window.db.collection('products').doc(id).delete().then(() => {
             showToast(window.t('toast_deleted'));
           }).catch((err) => {
