@@ -3,3 +3,11 @@ modules = ["nodejs-20", "web", "nix"]
 
 [nix]
 channel = "stable-25_05"
+
+[[ports]]
+localPort = 8000
+externalPort = 80
+
+[deployment]
+deploymentTarget = "cloudrun"
+run = "python3 -m http.server ${PORT:-8000}"
