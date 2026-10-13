@@ -1,20 +1,18 @@
-// Paste your Firebase web config here. Create a Firebase project, then:
-// Project settings -> Your apps -> Web (</>) -> Config.
-// Also enable: Firestore Database and Storage in the Firebase console.
-// For a private demo you can use test-mode security rules; lock them down for production.
+// Firebase web config for Lebougui Family project.
+// Populated from provided Firebase initialization snippet.
 
 window.FIREBASE_CONFIG = {
-  apiKey: "YOUR_API_KEY",
-  authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
-  projectId: "YOUR_PROJECT_ID",
-  storageBucket: "YOUR_PROJECT_ID.appspot.com",
-  messagingSenderId: "YOUR_SENDER_ID",
-  appId: "YOUR_APP_ID"
+  apiKey: "AIzaSyBVpABCMD0IqCYMZySRo8Gk8MALh6bfzGw",
+  authDomain: "lebougui-family-43e14.firebaseapp.com",
+  projectId: "lebougui-family-43e14",
+  storageBucket: "lebougui-family-43e14.firebasestorage.app",
+  messagingSenderId: "197595583028",
+  appId: "1:197595583028:web:f12980b2dca70fd10af061",
+  measurementId: "G-VFS801JCPM"
 };
 
 (function () {
-  // Skip initialization if the config has not been filled in yet.
-  if (!window.FIREBASE_CONFIG || window.FIREBASE_CONFIG.apiKey === "YOUR_API_KEY") {
+  if (!window.FIREBASE_CONFIG) {
     window.firebaseReady = false;
     window.db = null;
     window.storage = null;
