@@ -7,7 +7,6 @@
   let currentFilter = 'all';
 
   function loadProducts(){
-    if (window.firebaseReady && window.db) return;
     try {
       const raw = localStorage.getItem(STORAGE_KEY);
       products = raw ? JSON.parse(raw) : [];
@@ -56,16 +55,6 @@
       btn.addEventListener('click', (e) => {
         e.stopPropagation();
         const id = btn.getAttribute('data-id');
-        console.info('Lebougui: firebaseReady =', !!window.firebaseReady);
-  if (window.firebaseReady && window.db) {
-          window.db.collection('products').doc(id).delete().then(() => {
-            showToast(window.t('toast_deleted'));
-          }).catch((err) => {
-            console.error(err);
-            showToast('Delete failed.');
-          });
-          return;
-        }
         products = products.filter(p => p.id !== id);
         saveProducts();
         renderGallery();
@@ -140,22 +129,24 @@
       date: new Date().toISOString(),
     };
 
-    if (window.firebaseReady && window.storage && window.db) {
+    if (window.cloudinaryReady && window.cloudinaryReady()) {
       try {
-        const ref = window.storage.ref().child('products/' + prod.id);
         const blob = await (await fetch(prod.image)).blob();
-        await ref.put(blob);
-        prod.image = await ref.getDownloadURL();
-        await window.db.collection('products').doc(prod.id).set(prod);
-        currentFileData = null;
-        closeModal();
-        showToast(window.t('toast_saved'));
-        return;
+        const form = new FormData();
+        form.append('file', blob);
+        form.append('upload_preset', window.CLOUDINARY_CONFIG.uploadPreset);
+        const res = await fetch('https://api.cloudinary.com/v1_1/' + window.CLOUDINARY_CONFIG.cloudName + '/image/upload', {
+          method: 'POST',
+          body: form
+        });
+        const data = await res.json();
+        if (!res.ok || !data.secure_url) {
+          throw new Error((data && data.error && data.error.message) ? data.error.message : 'Cloudinary upload failed');
+        }
+        prod.image = data.secure_url;
       } catch (err) {
         console.error(err);
-        const detail = (err && (err.code || err.message)) ? (err.code || err.message) : 'unknown';
-        showToast('Upload failed: ' + detail);
-        return;
+        showToast('Image upload failed; saving locally. ' + ((err && err.message) ? err.message : ''));
       }
     }
 
@@ -605,23 +596,13 @@
        saveProducts = function(){ origSave(); try { bc.postMessage('updated'); } catch(e){} }
      } catch(e){}
    }
-  if (window.firebaseReady && window.db) {
-    window.db.collection('products').onSnapshot((snap) => {
-      products = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
-      if (typeof window.renderGallery === 'function') window.renderGallery();
-    }, (err) => {
-      console.error('Firestore listen failed:', err);
-      loadProducts();
-      if (typeof window.renderGallery === 'function') window.renderGallery();
-    });
-  } else {
-    loadProducts();
-    // seed a couple of demo products if empty (optional)
-    if(products.length === 0){
-      // no seed, keep empty
-    }
-    renderGallery();
+    console.info('Lebougui: cloudinaryReady =', !!(window.cloudinaryReady && window.cloudinaryReady()));
+  loadProducts();
+  // seed a couple of demo products if empty (optional)
+  if(products.length === 0){
+    // no seed, keep empty
   }
+  renderGallery();
   window.applyI18n();
 
   // expose
