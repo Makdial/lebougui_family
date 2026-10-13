@@ -562,6 +562,18 @@
   applyAdmin();
 
   // ---------- Init ----------
+   // Sync products across tabs/windows
+   window.addEventListener('storage', (e) => {
+     if (e.key === STORAGE_KEY) { loadProducts(); if (typeof window.renderGallery === 'function') window.renderGallery(); }
+   });
+   if ('BroadcastChannel' in window) {
+     try {
+       const bc = new BroadcastChannel('as_products');
+       bc.onmessage = () => { loadProducts(); if (typeof window.renderGallery === 'function') window.renderGallery(); };
+       const origSave = saveProducts;
+       saveProducts = function(){ origSave(); try { bc.postMessage('updated'); } catch(e){} }
+     } catch(e){}
+   }
   loadProducts();
   // seed a couple of demo products if empty (optional)
   if(products.length === 0){
