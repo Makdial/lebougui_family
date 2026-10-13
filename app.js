@@ -142,7 +142,8 @@
     if (window.firebaseReady && window.storage && window.db) {
       try {
         const ref = window.storage.ref().child('products/' + prod.id);
-        await ref.putString(prod.image, 'data_url');
+        const blob = await (await fetch(prod.image)).blob();
+        await ref.put(blob);
         prod.image = await ref.getDownloadURL();
         await window.db.collection('products').doc(prod.id).set(prod);
         currentFileData = null;
@@ -151,7 +152,8 @@
         return;
       } catch (err) {
         console.error(err);
-        showToast('Upload failed. Check Firebase config/rules.');
+        const detail = (err && (err.code || err.message)) ? (err.code || err.message) : 'unknown';
+        showToast('Upload failed: ' + detail);
         return;
       }
     }
