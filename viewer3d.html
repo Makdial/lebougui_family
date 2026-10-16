@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>3D Viewer</title>
+<style>
+html,body{margin:0;padding:0;overflow:hidden;background:#000}
+#c{display:block;width:100vw;height:100vh}
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+    "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+  }
+}
+</script>
+<script type="module">
+import * as THREE from "three";
+import { OrbitControls } from "three/addons/controls/OrbitControls.js";
+import { OBJLoader } from "three/addons/loaders/OBJLoader.js";
+import { MTLLoader } from "three/addons/loaders/MTLLoader.js";
+import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
+import { FBXLoader } from "three/addons/loaders/FBXLoader.js";
+
+const canvas = document.getElementById("c");
+const renderer = new THREE.WebGLRenderer({canvas, antialias:true});
+renderer.setPixelRatio(window.devicePixelRatio);
+renderer.setSize(window.innerWidth,window.innerHeight);
+renderer.setClearColor(0x000000,0);
+
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(45,window.innerWidth/window.innerHeight,0.1,200);
+camera.position.set(3,2,5);
+
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true;
+controls.minDistance=1.2;
+controls.maxDistance=10;
+
+scene.add(new THREE.HemisphereLight(0xffffff,0x444444,2));
+const dir = new THREE.DirectionalLight(0xffffff,1.5);
+dir.position.set(5,10,7.5);
+scene.add(dir);
+
+const params = new URLSearchParams(location.search);
+const url = params.get("url")||"";
+const ext = (url.split(".").pop()||"").toLowerCase();
+
+let model=null;
+function fit(){
+  if(!model) return;
+  const box = new THREE.Box3().setFromObject(model);
+  const size = box.getSize(new THREE.Vector3());
+  const center = box.getCenter(new THREE.Vector3());
+  model.position.x-=center.x; model.position.y-=center.y; model.position.z-=center.z;
+  const max=Math.max(size.x,size.y,size.z);
+  camera.position.set(max*1.6,max*0.9,max*1.8);
+  controls.target.set(0,0,0);
+  controls.update();
+}
+
+async function load(){
+  try{
+    if(ext==="glb"||ext==="gltf"){
+      const gltf = await new GLTFLoader().loadAsync(url);
+      model=gltf.scene; scene.add(model); fit();
+    }else if(ext==="obj"){
+      const obj = await new OBJLoader().loadAsync(url);
+      model=obj; scene.add(model); fit();
+    }else if(ext==="fbx"){
+      const fbx = await new FBXLoader().loadAsync(url);
+      model=fbx; scene.add(model); fit();
+    }else{
+      const gltf = await new GLTFLoader().loadAsync(url).catch(()=>null);
+      if(gltf){ model=gltf.scene; scene.add(model); fit(); return;}
+      const obj = await new OBJLoader().loadAsync(url).catch(()=>null);
+      if(obj){ model=obj; scene.add(model); fit(); return;}
+      const fbx = await new FBXLoader().loadAsync(url).catch(()=>null);
+      if(fbx){ model=fbx; scene.add(model); fit(); }
+    }
+  }catch(e){console.error(e);}
+}
+load();
+
+function animate(){
+  requestAnimationFrame(animate);
+  controls.update();
+  renderer.render(scene,camera);
+}
+animate();
+
+window.addEventListener("resize", ()=>{
+  camera.aspect=window.innerWidth/window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth,window.innerHeight);
+});
+</script>
+</body>
+</html>
