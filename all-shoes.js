@@ -102,7 +102,7 @@
       bar.style.display='none';
     }
     document.getElementById('view360').style.display=frames360.length>1?'':'none';
-    const v3=document.getElementById('view3D'); if(v3){ v3.style.display=(currentProduct.image||'').toLowerCase().match(/\.(glb|gltf|obj|fbx)(\?|$)/)?'':'none'; }
+    const v3=document.getElementById('view3D'); if(v3){ v3.style.display=((currentProduct.image||'').toLowerCase().match(/\.(glb|gltf|obj|fbx)(\?|$)/)||parseFrames(currentProduct).length>1)?'':'none'; }
 
     detailModal.classList.add('open'); detailModal.setAttribute('aria-hidden','false'); document.body.style.overflow='hidden';
   }
@@ -121,7 +121,7 @@
     else { rotateY=0; detailImg.src=currentProduct.image; }
     applyZoom();
   };
-  const v3=document.getElementById('view3D'); if(v3) v3.onclick=()=>{ if(currentProduct&&currentProduct.image){ window.open('viewer3d.html?url='+encodeURIComponent(currentProduct.image),'_blank'); } };
+  const v3=document.getElementById('view3D'); if(v3) v3.onclick=()=>{ if(currentProduct&&currentProduct.image){ const fr=parseFrames(currentProduct); if(fr.length>1){ window.open('viewer3d.html?frames='+encodeURIComponent(fr.join(',')),'_blank'); return; } window.open('viewer3d.html?url='+encodeURIComponent(currentProduct.image),'_blank'); } };
   const spinEl=document.getElementById('spin360');
   if(spinEl) spinEl.addEventListener('input',()=>{ frameIndex=parseInt(spinEl.value)||0; if(frames360[frameIndex]) detailImg.src=frames360[frameIndex]; });
 

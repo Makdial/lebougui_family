@@ -7,10 +7,12 @@
 <style>
 html,body{margin:0;padding:0;overflow:hidden;background:#000}
 #c{display:block;width:100vw;height:100vh}
+#hint{position:absolute;bottom:16px;left:50%;transform:translateX(-50%);color:#fff;background:rgba(0,0,0,.45);padding:6px 10px;border-radius:10px;font:12px/1.4 system-ui,sans-serif;backdrop-filter:blur(4px)}
 </style>
 </head>
 <body>
 <canvas id="c"></canvas>
+<div id="hint">Drag to rotate • Scroll to zoom</div>
 <script type="importmap">
 {
   "imports": {
@@ -32,26 +34,60 @@ const renderer = new THREE.WebGLRenderer({canvas, antialias:true});
 renderer.setPixelRatio(window.devicePixelRatio);
 renderer.setSize(window.innerWidth,window.innerHeight);
 renderer.setClearColor(0x000000,0);
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.2;
 
 const scene = new THREE.Scene();
-const camera = new THREE.PerspectiveCamera(45,window.innerWidth/window.innerHeight,0.1,200);
+scene.background = new THREE.Color(0x0a0a0a);
+
+const camera = new THREE.PerspectiveCamera(45,window.innerWidth/window.innerHeight,0.1,500);
 camera.position.set(3,2,5);
 
 const controls = new OrbitControls(camera, renderer.domElement);
 controls.enableDamping = true;
-controls.minDistance=1.2;
-controls.maxDistance=10;
+controls.minDistance=0.8;
+controls.maxDistance=15;
+controls.autoRotate = false;
 
-scene.add(new THREE.HemisphereLight(0xffffff,0x444444,2));
-const dir = new THREE.DirectionalLight(0xffffff,1.5);
-dir.position.set(5,10,7.5);
+scene.add(new THREE.HemisphereLight(0xffffff,0x222222,2.5));
+const dir = new THREE.DirectionalLight(0xffffff,1.8);
+dir.position.set(6,10,9);
 scene.add(dir);
+const fill = new THREE.DirectionalLight(0xffffff,0.4);
+fill.position.set(-6,-4,-6);
+scene.add(fill);
 
 const params = new URLSearchParams(location.search);
 const url = params.get("url")||"";
+const framesStr = params.get("frames")||"";
 const ext = (url.split(".").pop()||"").toLowerCase();
 
 let model=null;
+
+async function load360(){
+  try{
+    const frames = framesStr.split(",").map(s=>s.trim()).filter(Boolean);
+    if(frames.length<2){ return false; }
+    const loader = new THREE.TextureLoader();
+    const mats=[];
+    for(let i=0;i<frames.length;i++){
+      const t = await new Promise((res,rej)=>loader.load(frames[i],res,undefined,rej));
+      t.colorSpace = THREE.SRGBColorSpace;
+      mats.push(new THREE.MeshBasicMaterial({map:t, side:THREE.BackSide}));
+    }
+    const geo = new THREE.CylinderGeometry(1.2,1.2,2.2, frames.length, 1, true);
+    geo.rotateY(Math.PI);
+    model = new THREE.Mesh(geo,mats);
+    model.rotation.x = -0.15;
+    scene.add(model);
+    camera.position.set(0,1.5,3.2);
+    controls.target.set(0,0.2,0);
+    controls.update();
+    const hint=document.getElementById('hint'); if(hint) hint.textContent='Drag left/right to spin • Scroll to zoom';
+    return true;
+  }catch(e){console.error(e); return false;}
+}
+
 function fit(){
   if(!model) return;
   const box = new THREE.Box3().setFromObject(model);
@@ -64,35 +100,42 @@ function fit(){
   controls.update();
 }
 
-async function load(){
+async function loadModel(){
   try{
     if(ext==="glb"||ext==="gltf"){
       const gltf = await new GLTFLoader().loadAsync(url);
-      model=gltf.scene; scene.add(model); fit();
-    }else if(ext==="obj"){
-      const obj = await new OBJLoader().loadAsync(url);
-      model=obj; scene.add(model); fit();
-    }else if(ext==="fbx"){
-      const fbx = await new FBXLoader().loadAsync(url);
-      model=fbx; scene.add(model); fit();
-    }else{
-      const gltf = await new GLTFLoader().loadAsync(url).catch(()=>null);
-      if(gltf){ model=gltf.scene; scene.add(model); fit(); return;}
-      const obj = await new OBJLoader().loadAsync(url).catch(()=>null);
-      if(obj){ model=obj; scene.add(model); fit(); return;}
-      const fbx = await new FBXLoader().loadAsync(url).catch(()=>null);
-      if(fbx){ model=fbx; scene.add(model); fit(); }
+      model=gltf.scene; scene.add(model); fit(); return true;
     }
+    if(ext==="obj"){
+      const obj = await new OBJLoader().loadAsync(url);
+      model=obj; scene.add(model); fit(); return true;
+    }
+    if(ext==="fbx"){
+      const fbx = await new FBXLoader().loadAsync(url);
+      model=fbx; scene.add(model); fit(); return true;
+    }
+    const gltf = await new GLTFLoader().loadAsync(url).catch(()=>null);
+    if(gltf){ model=gltf.scene; scene.add(model); fit(); return true; }
+    const obj = await new OBJLoader().loadAsync(url).catch(()=>null);
+    if(obj){ model=obj; scene.add(model); fit(); return true; }
+    const fbx = await new FBXLoader().loadAsync(url).catch(()=>null);
+    if(fbx){ model=fbx; scene.add(model); fit(); return true; }
   }catch(e){console.error(e);}
+  return false;
 }
-load();
+
+async function init(){
+  const ok360 = await load360();
+  if(!ok360){ await loadModel(); }
+  animate();
+}
 
 function animate(){
   requestAnimationFrame(animate);
   controls.update();
   renderer.render(scene,camera);
 }
-animate();
+init();
 
 window.addEventListener("resize", ()=>{
   camera.aspect=window.innerWidth/window.innerHeight;
@@ -102,3 +145,4 @@ window.addEventListener("resize", ()=>{
 </script>
 </body>
 </html>
+'
