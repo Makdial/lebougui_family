@@ -119,6 +119,13 @@ window.I18N = {
     upl_360_help: "Select 8–36 photos taken around the shoe, in order, for a 360° spin.",
     nav_orders: "Orders",
     sync_cloud: "Sync local to cloud",
+    btn_edit: "Edit",
+    edit_creation: "Edit Creation",
+    btn_update: "Update Creation",
+    upload_title: "Add a New Creation",
+    frames_existing: "existing frames kept unless you choose new ones",
+    toast_updated: "Creation updated",
+    toast_uploadfail: "Upload failed",
   },
   fr: {
     brand: "Lebougui Famille",
@@ -238,6 +245,13 @@ window.I18N = {
     upl_360_help: "Sélectionnez 8 à 36 photos prises autour de la chaussure, dans l'ordre, pour une rotation 360°.",
     nav_orders: "Commandes",
     sync_cloud: "Synchroniser le local au cloud",
+    btn_edit: "Modifier",
+    edit_creation: "Modifier la création",
+    btn_update: "Mettre à jour",
+    upload_title: "Ajouter une création",
+    frames_existing: "images existantes conservées sauf si vous en choisissez de nouvelles",
+    toast_updated: "Création mise à jour",
+    toast_uploadfail: "Échec du téléversement",
   },
   wo: {
     brand: "Lebougui Den",
@@ -357,6 +371,13 @@ window.I18N = {
     upl_360_help: "Tànnal 8 ba 36 photos yu ñu nataal ci wetu chaussure bi, ci topp, ngir rotation 360°.",
     nav_orders: "Commandes yi",
     sync_cloud: "Synchroniser local ci cloud",
+    btn_edit: "Soppi",
+    edit_creation: "Soppi création bi",
+    btn_update: "Yeesal",
+    upload_title: "Yokk création bu bees",
+    frames_existing: "photos yu am ba tey ñu koy denc su fekkee tànnal yu bees",
+    toast_updated: "Création bi yeesal na",
+    toast_uploadfail: "Yónnee bi jàppadi",
   },
   es: {
     brand: "Lebougui Familia",
@@ -476,6 +497,13 @@ window.I18N = {
     upl_360_help: "Selecciona de 8 a 36 fotos tomadas alrededor del zapato, en orden, para un giro de 360°.",
     nav_orders: "Pedidos",
     sync_cloud: "Sincronizar local a la nube",
+    btn_edit: "Editar",
+    edit_creation: "Editar creación",
+    btn_update: "Actualizar",
+    upload_title: "Añadir una creación",
+    frames_existing: "fotogramas existentes se conservan salvo que elijas nuevos",
+    toast_updated: "Creación actualizada",
+    toast_uploadfail: "Error al subir",
   },
   it: {
     brand: "Lebougui Famiglia",
@@ -595,6 +623,13 @@ window.I18N = {
     upl_360_help: "Seleziona da 8 a 36 foto scattate attorno alla scarpa, in ordine, per una rotazione a 360°.",
     nav_orders: "Ordini",
     sync_cloud: "Sincronizza locale al cloud",
+    btn_edit: "Modifica",
+    edit_creation: "Modifica creazione",
+    btn_update: "Aggiorna",
+    upload_title: "Aggiungi una creazione",
+    frames_existing: "fotogrammi esistenti mantenuti se non ne scegli di nuovi",
+    toast_updated: "Creazione aggiornata",
+    toast_uploadfail: "Caricamento non riuscito",
   }
   , de: {
     "brand": "Lebougui Familie",
@@ -713,7 +748,14 @@ window.I18N = {
     "upl_360": "360°-Drehbilder (optional)",
     "upl_360_help": "Wählen Sie 8–36 rund um den Schuh aufgenommene Fotos in Reihenfolge für eine 360°-Drehung.",
     "nav_orders": "Bestellungen",
-    "sync_cloud": "Lokal mit Cloud synchronisieren"
+    "sync_cloud": "Lokal mit Cloud synchronisieren",
+    "btn_edit": "Bearbeiten",
+    "edit_creation": "Kreation bearbeiten",
+    "btn_update": "Aktualisieren",
+    "upload_title": "Neue Kreation hinzufügen",
+    "frames_existing": "vorhandene Bilder bleiben erhalten, außer Sie wählen neue",
+    "toast_updated": "Kreation aktualisiert",
+    "toast_uploadfail": "Upload fehlgeschlagen"
 }
 };
 

@@ -27,6 +27,8 @@
           desc: p.desc,
           image: p.image,
           colors: (function(){ try { return JSON.parse(p.colors||'[]'); } catch(e){ return []; } })(),
+          images_360: p.images_360 || '[]',
+          has_360: !!p.has_360,
           date: p.created_at || p.date
         }));
         if(typeof window.renderGallery === 'function') window.renderGallery();
@@ -65,10 +67,21 @@
           ${p.desc ? `<p class="pc-desc">${escapeHtml(p.desc)}</p>` : ''}
           <div class="pc-foot">
             <span class="pc-date">${window.t('created_label')} · ${formatDate(p.date)}</span>
+            <button class="pc-edit" data-id="${p.id}" aria-label="${window.t('btn_edit') || 'Edit'}">✎</button>
             <button class="pc-del" data-id="${p.id}" aria-label="${window.t('btn_delete')}">🗑</button>
           </div>
         </div>`;
       grid.appendChild(card);
+    });
+
+    // edit handlers (admin only, opens the upload modal pre-filled)
+    grid.querySelectorAll('.pc-edit').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const id = btn.getAttribute('data-id');
+        const prod = products.find(p => p.id === id);
+        if(prod) openEdit(prod);
+      });
     });
 
     // delete handlers
@@ -96,7 +109,39 @@
 
   // ---------- Upload modal ----------
   const modal = document.getElementById('uploadModal');
+  let editingId = null;   // null = new creation, otherwise the product id being edited
+  let editingProd = null; // the product object being edited
+
   function openModal(){ modal.classList.add('open'); modal.setAttribute('aria-hidden','false'); document.body.style.overflow='hidden'; }
+
+  function openEdit(prod){
+    editingId = prod.id;
+    editingProd = prod;
+    // pre-fill fields
+    document.getElementById('uplName').value = prod.name || '';
+    document.getElementById('uplCat').value = prod.category || 'furniture';
+    document.getElementById('uplPrice').value = prod.price || '';
+    document.getElementById('uplDesc').value = prod.desc || '';
+    const colorsArr = Array.isArray(prod.colors) ? prod.colors : (function(){ try { return JSON.parse(prod.colors||'[]'); } catch(e){ return []; } })();
+    const colorsInput = document.getElementById('uplColors');
+    if(colorsInput){ colorsInput.value = colorsArr.join(', '); colorsInput.dispatchEvent(new Event('input')); }
+    // show existing image as current data + preview
+    currentFileData = prod.image || null;
+    const prev = document.getElementById('previewImg');
+    if(prod.image){ prev.src = prod.image; prev.hidden = false; document.getElementById('dropInner').hidden = true; document.getElementById('uploadDrop').classList.add('has-img'); }
+    current360Files = [];
+    const info = document.getElementById('upl360Info');
+    if(info){
+      const n = (function(){ try { return JSON.parse(prod.images_360||'[]').length; } catch(e){ return 0; } })();
+      info.textContent = n ? (n + ' ' + (window.t('frames_existing') || 'existing frames kept unless you choose new ones')) : '';
+    }
+    const title = document.getElementById('uploadTitle');
+    if(title) title.textContent = (window.t('edit_creation') || 'Edit Creation');
+    const saveBtn = document.getElementById('uploadSaveBtn');
+    if(saveBtn) saveBtn.textContent = (window.t('btn_update') || 'Update Creation');
+    openModal();
+  }
+
   function closeModal(){ modal.classList.remove('open'); modal.setAttribute('aria-hidden','true'); document.body.style.overflow=''; resetForm(); }
   function resetForm(){
     document.getElementById('uploadForm').reset();
@@ -106,8 +151,14 @@
     document.getElementById('uploadDrop').classList.remove('has-img');
     currentFileData = null;
     current360Files = [];
+    editingId = null;
+    editingProd = null;
     const info = document.getElementById('upl360Info');
     if(info) info.textContent = '';
+    const title = document.getElementById('uploadTitle');
+    if(title) title.textContent = (window.t('upload_title') || 'Add New Creation');
+    const saveBtn = document.getElementById('uploadSaveBtn');
+    if(saveBtn) saveBtn.textContent = (window.t('btn_save') || 'Save Creation');
   }
 
   document.getElementById('openUpload').addEventListener('click', openModal);
@@ -156,22 +207,22 @@
     if(info) info.textContent = files.length + ' ' + (window.t('frames_selected') || 'frames selected');
   }
 
-  // Reusable R2 upload via the upload Worker (presigned PUT)
+  // Reusable R2 upload via the upload Worker (direct binding upload)
   async function uploadToR2(blob, filename, folder){
     const WORKER_URL = (window.API_CONFIG && window.API_CONFIG.R2_UPLOAD_WORKER)
       ? window.API_CONFIG.R2_UPLOAD_WORKER
       : "https://shoemaker-r2-uploader.solitary-grass-8ad1.workers.dev";
     const type = blob.type || "image/jpeg";
-    const presignRes = await fetch(WORKER_URL + "/api/presign", {
+    const qs = new URLSearchParams({ filename: filename || "upload.jpg", contentType: type, folder: folder || "products" });
+    const res = await fetch(WORKER_URL + "/api/upload?" + qs.toString(), {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ filename: filename || "upload.jpg", contentType: type, folder: folder || "products" })
+      headers: { "Content-Type": type },
+      body: blob
     });
-    const presign = await presignRes.json();
-    if(!presignRes.ok || !presign.putUrl){ throw new Error(presign.error || "Failed to get upload URL"); }
-    const uploadRes = await fetch(presign.putUrl, { method: "PUT", headers: { "Content-Type": type }, body: blob });
-    if(!uploadRes.ok){ throw new Error("R2 upload failed (" + uploadRes.status + ")"); }
-    return presign.publicUrl;
+    let data = {};
+    try { data = await res.json(); } catch(e){}
+    if(!res.ok || !data.publicUrl){ throw new Error(data.detail || data.error || ("R2 upload failed (" + res.status + ")")); }
+    return data.publicUrl;
   }
 
   document.getElementById('uploadForm').addEventListener('submit', async (e) => {
@@ -179,43 +230,65 @@
     const name = document.getElementById('uplName').value.trim();
     if(!name){ showToast(window.t('toast_needname')); return; }
     if(!currentFileData){ showToast(window.t('toast_needimg')); return; }
+    const isEdit = !!editingId;
     const colorsRaw = (document.getElementById('uplColors')?.value || '').trim();
     const colors = colorsRaw ? colorsRaw.split(',').map(c => c.trim()).filter(Boolean) : [];
     const prod = {
-      id: 'p_' + Date.now() + '_' + Math.random().toString(36).slice(2,7),
+      id: isEdit ? editingId : ('p_' + Date.now() + '_' + Math.random().toString(36).slice(2,7)),
       name,
       category: document.getElementById('uplCat').value,
       price: document.getElementById('uplPrice').value.trim(),
       desc: document.getElementById('uplDesc').value.trim(),
       image: currentFileData,
       colors,
-      date: new Date().toISOString(),
+      date: (isEdit && editingProd && (editingProd.date || editingProd.created_at)) || new Date().toISOString(),
     };
 
-    // Main image -> R2
-    try {
-      const blob = await (await fetch(prod.image)).blob();
-      const file = new File([blob], "product.jpg", { type: blob.type || "image/jpeg" });
-      prod.image = await uploadToR2(file, file.name, "products");
-    } catch (err) {
-      console.error(err);
-      showToast("Image upload failed; saving locally. " + (err.message || ""));
+    const saveBtn = document.getElementById('uploadSaveBtn');
+    const prevLabel = saveBtn ? saveBtn.textContent : '';
+    const setBusy = (busy, txt) => { if(saveBtn){ saveBtn.disabled = busy; saveBtn.textContent = busy ? (txt || 'Saving…') : prevLabel; } };
+
+    // Main image -> R2 (only if a NEW data-URL image was chosen)
+    if(String(prod.image).startsWith('data:')){
+      setBusy(true);
+      try {
+        const blob = await (await fetch(prod.image)).blob();
+        const file = new File([blob], "product.jpg", { type: blob.type || "image/jpeg" });
+        prod.image = await uploadToR2(file, file.name, "products");
+      } catch (err) {
+        console.error(err);
+        setBusy(false);
+        showToast((window.t('toast_uploadfail') || 'Image upload failed') + ": " + (err.message || ""));
+        return;
+      }
     }
 
-    // 360 spin frames -> R2
-    const images360 = [];
+    // 360 spin frames -> R2 (keep existing ones when editing and no new frames chosen)
+    let images360 = (isEdit && editingProd) ? (function(){ try { return JSON.parse(editingProd.images_360||'[]'); } catch(e){ return []; } })() : [];
     if(current360Files.length){
+      setBusy(true, 'Uploading 360° frames…');
+      images360 = [];
       try {
         for(const f of current360Files){
           const url = await uploadToR2(f, f.name, "products/360");
           images360.push(url);
         }
-      } catch(err){ console.error(err); }
+      } catch(err){
+        console.error(err);
+        setBusy(false);
+        showToast((window.t('toast_uploadfail') || 'Image upload failed') + ": " + (err.message || ""));
+        return;
+      }
     }
     prod.images_360 = images360;
     prod.has_360 = images360.length > 0;
 
-    products.push(prod);
+    if(isEdit){
+      const i = products.findIndex(p => p.id === editingId);
+      if(i >= 0) products[i] = prod; else products.push(prod);
+    } else {
+      products.push(prod);
+    }
     saveProducts();
     try {
       if (window.API_CONFIG) {
@@ -226,10 +299,12 @@
         });
       }
     } catch (e) { console.error(e); }
+    setBusy(false);
     currentFileData = null;
+    const wasEdit = isEdit;
     closeModal();
     renderGallery();
-    showToast(window.t('toast_saved'));
+    showToast(wasEdit ? (window.t('toast_updated') || 'Creation updated') : window.t('toast_saved'));
     // scroll to gallery
     document.getElementById('gallery').scrollIntoView({behavior:'smooth'});
   });

@@ -396,6 +396,12 @@ body::before {
   font-size: 1rem;
 }
 .pc-del:hover { opacity: 1; transform: scale(1.15); }
+.pc-edit {
+  background: none; border: 0; cursor: pointer;
+  opacity: 0.6; transition: opacity .2s, transform .2s;
+  font-size: 1rem; margin-left: auto;
+}
+.pc-edit:hover { opacity: 1; transform: scale(1.15); }
 
 .empty-state {
   display: none;
@@ -525,6 +531,9 @@ body.is-admin .admin-only { display: inline-flex !important; }
 /* reveal admin delete buttons inside cards */
 body.is-admin .pc-del { display: inline-block; }
 .pc-del { display: none; }
+/* reveal admin edit buttons inside cards */
+body.is-admin .pc-edit { display: inline-block; }
+.pc-edit { display: none; }
 
 /* Product detail */
 .detail-card {
@@ -655,3 +664,10 @@ body.is-admin .pc-del { display: inline-block; }
   *, *::before, *::after { animation: none !important; transition: none !important; }
   .reveal { opacity: 1; transform: none; }
 }
+/* Admin color picker */
+.color-chip{width:30px;height:30px;border-radius:50%;border:2px solid rgba(255,255,255,.35);cursor:pointer;position:relative;padding:0;transition:transform .15s ease}
+.color-chip:hover{transform:scale(1.12)}
+.color-chip.active{box-shadow:0 0 0 2px var(--accent,#00f5ff);border-color:#fff}
+.color-chip.active::after{content:"\2713";position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);font-size:12px;color:#fff;text-shadow:0 0 4px #000}
+.color-pill{display:inline-flex;align-items:center;gap:4px;width:28px;height:28px;border-radius:14px;border:2px solid rgba(255,255,255,.5);justify-content:flex-end;padding:0 4px;position:relative}
+.color-pill button{border:0;background:rgba(0,0,0,.55);color:#fff;border-radius:50%;width:16px;height:16px;font-size:11px;line-height:1;cursor:pointer;padding:0;margin-left:auto}

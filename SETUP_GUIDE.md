@@ -7,7 +7,7 @@ Everything you need to know about the new Cloudflare-powered backend.
 | Piece | What it is | URL / ID |
 |---|---|---|
 | **R2 bucket** | Stores ALL pictures & videos (shared across devices) | `lebouguifamily` — public at `https://pub-f7371d276e04458681ce5339f0789e7e.r2.dev` |
-| **Upload Worker** | Creates presigned upload URLs (credentials stay server-side) | `https://shoemaker-r2-uploader.solitary-grass-8ad1.workers.dev` |
+| **Upload Worker** | Stores uploaded media directly in R2 via the bucket binding (credentials stay server-side) | `https://shoemaker-r2-uploader.solitary-grass-8ad1.workers.dev` |
 | **API Worker + D1** | Shared product catalog & orders database | `https://shoemaker-orders-api.solitary-grass-8ad1.workers.dev` |
 | **D1 database** | `products`, `orders`, `order_items` tables | `shoemaker-db` |
 

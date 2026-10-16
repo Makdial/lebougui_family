@@ -28,7 +28,7 @@ python -m http.server 8000 --directory .
 ## Backend (already set up)
 
 - **R2**: `lebouguifamily` — public `https://pub-f7371d276e04458681ce5339f0789e7e.r2.dev`
-- **R2 Uploader Worker**: presigned uploads at `https://shoemaker-r2-uploader.solitary-grass-8ad1.workers.dev`
+- **R2 Uploader Worker**: direct R2 uploads at `https://shoemaker-r2-uploader.solitary-grass-8ad1.workers.dev` (`POST /api/upload`)
 - **Orders/API Worker + D1**: catalog/orders at `https://shoemaker-orders-api.solitary-grass-8ad1.workers.dev`
 
 All endpoints are in `api-config.js`.

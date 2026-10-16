@@ -272,7 +272,7 @@
     <div class="modal-backdrop" id="modalBackdrop"></div>
     <div class="modal-card glass">
       <button class="modal-close" id="modalClose" aria-label="Close">✕</button>
-      <h3 class="modal-title" data-i18n="modal_title">Add a New Creation</h3>
+      <h3 class="modal-title" id="uploadTitle" data-i18n="modal_title">Add a New Creation</h3>
       <p class="modal-sub" data-i18n="modal_sub">Upload a photo of the piece you just finished.</p>
       <form id="uploadForm">
         <div class="field">
@@ -296,7 +296,14 @@
         <div class="field">
           <label data-i18n="upl_colors">Available colors (optional)</label>
           <input type="text" id="uplColors" placeholder="e.g. #000000, #8b4513, #ffffff" />
-          <small style="opacity:.7">Comma-separated hex colors</small>
+          <div class="color-picker-wrap" id="colorPickerWrap" style="margin-top:10px">
+            <div class="color-swatches" id="colorSwatches" style="display:flex;gap:6px;flex-wrap:wrap"></div>
+            <div class="color-custom" style="display:flex;gap:8px;align-items:center;margin-top:8px">
+              <input type="color" id="customColor" value="#000000">
+              <button type="button" class="btn btn-ghost btn-sm" id="addCustom">Add</button>
+            </div>
+            <div class="color-preview" id="colorPreview" style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px"></div>
+          </div>
         </div>
         <div class="field">
           <label data-i18n="upl_desc">Description</label>
@@ -321,7 +328,7 @@
         </div>
         <div class="modal-actions">
           <button type="button" class="btn btn-ghost" id="modalCancel" data-i18n="btn_cancel">Cancel</button>
-          <button type="submit" class="btn btn-primary" data-i18n="btn_save">Save Creation</button>
+          <button type="submit" class="btn btn-primary" id="uploadSaveBtn" data-i18n="btn_save">Save Creation</button>
         </div>
       </form>
     </div>
@@ -450,6 +457,7 @@
   <script src="api-config.js"></script>
   <script src="i18n.js"></script>
   <script src="particles.js"></script>
+  <script src="color-picker.js"></script>
   <script src="app.js"></script>
 </body>
 </html>
