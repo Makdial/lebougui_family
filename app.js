@@ -12,6 +12,27 @@
       products = raw ? JSON.parse(raw) : [];
     } catch(e){ products = []; }
   }
+  async function loadSharedProducts(){
+    if(!window.API_CONFIG || !window.API_CONFIG.WORKER_URL) return;
+    try {
+      const res = await fetch(window.API_CONFIG.WORKER_URL + '/api/products');
+      if(!res.ok) return;
+      const shared = await res.json();
+      if(Array.isArray(shared) && shared.length > 0){
+        products = shared.map(p => ({
+          id: p.id,
+          name: p.name,
+          category: p.category,
+          price: p.price,
+          desc: p.desc,
+          image: p.image,
+          colors: (function(){ try { return JSON.parse(p.colors||'[]'); } catch(e){ return []; } })(),
+          date: p.created_at || p.date
+        }));
+        if(typeof window.renderGallery === 'function') window.renderGallery();
+      }
+    } catch(e){ console.error(e); }
+  }
   function saveProducts(){
     try { localStorage.setItem(STORAGE_KEY, JSON.stringify(products)); }
     catch(e){ showToast(window.t('toast_toobig')); }
@@ -59,6 +80,11 @@
         saveProducts();
         renderGallery();
         showToast(window.t('toast_deleted'));
+        // also delete from the shared cloud catalog
+        if(window.API_CONFIG){
+          fetch(window.API_CONFIG.WORKER_URL + '/api/products/' + encodeURIComponent(id), { method: 'DELETE' })
+            .catch(err => console.error(err));
+        }
       });
     });
   };
@@ -78,6 +104,10 @@
     prev.hidden = true; prev.src = '';
     document.getElementById('dropInner').hidden = false;
     document.getElementById('uploadDrop').classList.remove('has-img');
+    currentFileData = null;
+    current360Files = [];
+    const info = document.getElementById('upl360Info');
+    if(info) info.textContent = '';
   }
 
   document.getElementById('openUpload').addEventListener('click', openModal);
@@ -90,6 +120,8 @@
   const fileInput = document.getElementById('uplFile');
   drop.addEventListener('click', () => fileInput.click());
   fileInput.addEventListener('change', (e) => handleFile(e.target.files[0]));
+  const files360 = document.getElementById('upl360Files');
+  if(files360) files360.addEventListener('change', (e) => handle360Files(e.target.files));
   ['dragenter','dragover'].forEach(ev => drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.add('drag'); }));
   ['dragleave','drop'].forEach(ev => drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.remove('drag'); }));
   drop.addEventListener('drop', e => {
@@ -114,11 +146,41 @@
     reader.readAsDataURL(file);
   }
 
+  // 360 spin frames (optional, multiple images)
+  let current360Files = [];
+  function handle360Files(fileList){
+    if(!fileList || !fileList.length){ return; }
+    const files = Array.from(fileList).filter(f => f.type.startsWith('image/') && f.size <= MAX_IMG).slice(0, 48);
+    current360Files = files;
+    const info = document.getElementById('upl360Info');
+    if(info) info.textContent = files.length + ' ' + (window.t('frames_selected') || 'frames selected');
+  }
+
+  // Reusable R2 upload via the upload Worker (presigned PUT)
+  async function uploadToR2(blob, filename, folder){
+    const WORKER_URL = (window.API_CONFIG && window.API_CONFIG.R2_UPLOAD_WORKER)
+      ? window.API_CONFIG.R2_UPLOAD_WORKER
+      : "https://shoemaker-r2-uploader.solitary-grass-8ad1.workers.dev";
+    const type = blob.type || "image/jpeg";
+    const presignRes = await fetch(WORKER_URL + "/api/presign", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ filename: filename || "upload.jpg", contentType: type, folder: folder || "products" })
+    });
+    const presign = await presignRes.json();
+    if(!presignRes.ok || !presign.putUrl){ throw new Error(presign.error || "Failed to get upload URL"); }
+    const uploadRes = await fetch(presign.putUrl, { method: "PUT", headers: { "Content-Type": type }, body: blob });
+    if(!uploadRes.ok){ throw new Error("R2 upload failed (" + uploadRes.status + ")"); }
+    return presign.publicUrl;
+  }
+
   document.getElementById('uploadForm').addEventListener('submit', async (e) => {
     e.preventDefault();
     const name = document.getElementById('uplName').value.trim();
     if(!name){ showToast(window.t('toast_needname')); return; }
     if(!currentFileData){ showToast(window.t('toast_needimg')); return; }
+    const colorsRaw = (document.getElementById('uplColors')?.value || '').trim();
+    const colors = colorsRaw ? colorsRaw.split(',').map(c => c.trim()).filter(Boolean) : [];
     const prod = {
       id: 'p_' + Date.now() + '_' + Math.random().toString(36).slice(2,7),
       name,
@@ -126,32 +188,44 @@
       price: document.getElementById('uplPrice').value.trim(),
       desc: document.getElementById('uplDesc').value.trim(),
       image: currentFileData,
+      colors,
       date: new Date().toISOString(),
     };
 
-    if (window.cloudinaryReady && window.cloudinaryReady()) {
-      try {
-        const blob = await (await fetch(prod.image)).blob();
-        const form = new FormData();
-        form.append('file', blob);
-        form.append('upload_preset', window.CLOUDINARY_CONFIG.uploadPreset);
-        const res = await fetch('https://api.cloudinary.com/v1_1/' + window.CLOUDINARY_CONFIG.cloudName + '/image/upload', {
-          method: 'POST',
-          body: form
-        });
-        const data = await res.json();
-        if (!res.ok || !data.secure_url) {
-          throw new Error((data && data.error && data.error.message) ? data.error.message : 'Cloudinary upload failed');
-        }
-        prod.image = data.secure_url;
-      } catch (err) {
-        console.error(err);
-        showToast('Image upload failed; saving locally. ' + ((err && err.message) ? err.message : ''));
-      }
+    // Main image -> R2
+    try {
+      const blob = await (await fetch(prod.image)).blob();
+      const file = new File([blob], "product.jpg", { type: blob.type || "image/jpeg" });
+      prod.image = await uploadToR2(file, file.name, "products");
+    } catch (err) {
+      console.error(err);
+      showToast("Image upload failed; saving locally. " + (err.message || ""));
     }
+
+    // 360 spin frames -> R2
+    const images360 = [];
+    if(current360Files.length){
+      try {
+        for(const f of current360Files){
+          const url = await uploadToR2(f, f.name, "products/360");
+          images360.push(url);
+        }
+      } catch(err){ console.error(err); }
+    }
+    prod.images_360 = images360;
+    prod.has_360 = images360.length > 0;
 
     products.push(prod);
     saveProducts();
+    try {
+      if (window.API_CONFIG) {
+        await fetch(window.API_CONFIG.WORKER_URL + '/api/products', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ ...prod, colors: prod.colors || [], images_360: images360, has_360: images360.length > 0 })
+        });
+      }
+    } catch (e) { console.error(e); }
     currentFileData = null;
     closeModal();
     renderGallery();
@@ -583,6 +657,40 @@
   });
   applyAdmin();
 
+  // ---------- Sync local creations to cloud ----------
+  const syncBtn = document.getElementById('syncCloud');
+  if(syncBtn){
+    syncBtn.addEventListener('click', async () => {
+      if(!window.API_CONFIG) { showToast('Cloud not configured.'); return; }
+      loadProducts();
+      let cloudIds = [];
+      try {
+        const res = await fetch(window.API_CONFIG.WORKER_URL + '/api/products');
+        const cloud = await res.json();
+        cloudIds = (cloud || []).map(p => p.id);
+      } catch(e){}
+      const missing = products.filter(p => !cloudIds.includes(p.id));
+      if(missing.length === 0){ showToast('Everything is already in the cloud.'); return; }
+      let ok = 0;
+      for(const p of missing){
+        try {
+          const r = await fetch(window.API_CONFIG.WORKER_URL + '/api/products', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              id: p.id, name: p.name, category: p.category, price: p.price,
+              desc: p.desc, image: p.image,
+              colors: p.colors || [], images_360: p.images_360 || [], has_360: !!p.has_360
+            })
+          });
+          if(r.ok) ok++;
+        } catch(e){ console.error(e); }
+      }
+      showToast('Synced ' + ok + '/' + missing.length + ' creations to cloud.');
+      loadSharedProducts();
+    });
+  }
+
   // ---------- Init ----------
    // Sync products across tabs/windows
    window.addEventListener('storage', (e) => {
@@ -603,6 +711,7 @@
     // no seed, keep empty
   }
   renderGallery();
+  loadSharedProducts();
   window.applyI18n();
 
   // expose

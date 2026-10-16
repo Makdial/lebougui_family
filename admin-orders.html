@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="en" data-lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Admin - Orders - Lebougui Family</title>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="styles.css" />
+  <style>
+    .admin-wrap { margin:120px auto 60px; max-width:1000px; padding:0 20px; }
+    .order-card { margin-bottom:18px; padding:18px; border-radius:14px; }
+    .order-head { display:flex; justify-content:space-between; flex-wrap:wrap; gap:8px; margin-bottom:10px; }
+    .order-items { list-style:none; margin:0; padding:0; }
+    .order-items li { display:flex; gap:12px; align-items:center; padding:8px 0; border-top:1px solid rgba(255,255,255,.1); }
+    .order-items img { width:48px; height:48px; object-fit:cover; border-radius:8px; }
+    .badge-new { background:#ff5d6c; color:#fff; border-radius:6px; padding:2px 8px; font-size:12px; }
+    .stat-row { display:flex; gap:20px; flex-wrap:wrap; margin-bottom:24px; }
+    .stat-box { padding:16px 24px; border-radius:12px; }
+    .stat-box strong { font-size:28px; display:block; }
+  </style>
+</head>
+<body>
+  <canvas id="particles"></canvas>
+  <header class="site-header" id="siteHeader">
+    <div class="container nav-wrap">
+      <a href="index.html" class="brand"><span class="brand-mark">LF</span><span class="brand-text">Lebougui Family</span></a>
+      <nav class="nav"><a href="index.html">Home</a><a href="all-shoes.html">All Shoes</a><a href="admin-orders.html">Orders</a></nav>
+    </div>
+  </header>
+  <div class="admin-wrap">
+    <h2 class="section-title neon-underline">Orders Dashboard</h2>
+    <div class="stat-row">
+      <div class="stat-box glass"><strong id="statOrders">0</strong>Orders</div>
+      <div class="stat-box glass"><strong id="statItems">0</strong>Items</div>
+      <div class="stat-box glass"><strong id="statNew">0</strong>New</div>
+    </div>
+    <div id="ordersList"></div>
+  </div>
+  <script src="api-config.js"></script>
+  <script src="particles.js"></script>
+  <script src="admin-orders.js"></script>
+</body>
+</html>

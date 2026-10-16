@@ -30,6 +30,7 @@
         <a href="#home" data-i18n="nav_home">Home</a>
         <a href="#about" data-i18n="nav_about">About</a>
         <a href="#gallery" data-i18n="nav_gallery">Creations</a>
+        <a href="all-shoes.html" data-i18n="nav_all_shoes">All Shoes</a>
         <a href="#services" data-i18n="nav_services">Services</a>
         <a href="#contact" data-i18n="nav_contact">Contact</a>
       </nav>
@@ -151,6 +152,8 @@
           <button class="btn btn-primary btn-sm admin-only" id="openUpload">
             <span>＋</span> <span data-i18n="btn_add">Add New Creation</span>
           </button>
+          <a href="admin-orders.html" class="btn btn-ghost btn-sm admin-only" data-i18n="nav_orders">📦 Orders</a>
+          <button class="btn btn-ghost btn-sm admin-only" id="syncCloud">☁ <span data-i18n="sync_cloud">Sync local to cloud</span></button>
           <div class="filter-chips" id="filterChips">
             <button class="chip-btn active" data-filter="all" data-i18n="filter_all">All</button>
             <button class="chip-btn" data-filter="furniture" data-i18n="filter_furniture">Furniture</button>
@@ -291,6 +294,11 @@
           </div>
         </div>
         <div class="field">
+          <label data-i18n="upl_colors">Available colors (optional)</label>
+          <input type="text" id="uplColors" placeholder="e.g. #000000, #8b4513, #ffffff" />
+          <small style="opacity:.7">Comma-separated hex colors</small>
+        </div>
+        <div class="field">
           <label data-i18n="upl_desc">Description</label>
           <textarea id="uplDesc" rows="3" placeholder="Wood, dimensions, finish..."></textarea>
         </div>
@@ -305,6 +313,11 @@
             </div>
             <img id="previewImg" class="preview-img" alt="preview" hidden />
           </div>
+        </div>
+        <div class="field">
+          <label data-i18n="upl_360">360° spin frames (optional)</label>
+          <input type="file" id="upl360Files" accept="image/*" multiple />
+          <small><span data-i18n="upl_360_help">Select 8–36 photos taken around the shoe, in order, for a 360° spin.</span> <strong id="upl360Info"></strong></small>
         </div>
         <div class="modal-actions">
           <button type="button" class="btn btn-ghost" id="modalCancel" data-i18n="btn_cancel">Cancel</button>
@@ -434,6 +447,7 @@
   <div class="toast" id="toast"></div>
 
   <script src="cloudinary-config.js"></script>
+  <script src="api-config.js"></script>
   <script src="i18n.js"></script>
   <script src="particles.js"></script>
   <script src="app.js"></script>

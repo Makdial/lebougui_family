@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="en" data-lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>All Shoes - Lebougui Family</title>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700;900&family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="styles.css" />
+  <style>
+    .all-shoes-header { margin-top: 120px; }
+    .color-picker { display:flex; gap:8px; margin:8px 0; flex-wrap:wrap; }
+    .color-swatch { width:32px; height:32px; border-radius:50%; border:2px solid rgba(255,255,255,0.4); cursor:pointer; position:relative; }
+    .color-swatch.active { box-shadow:0 0 0 2px #fff; }
+    .color-swatch.active::after { content:'✓'; position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); color:#fff; text-shadow:0 0 4px #000; font-size:14px; }
+    .cart-btn { position:fixed; bottom:20px; right:20px; z-index:100; }
+    .cart-badge { background:#ff5d6c; color:#fff; border-radius:50%; padding:2px 8px; font-size:12px; margin-left:6px; }
+    .cart-list { list-style:none; margin:0 0 12px; padding:0; max-height:300px; overflow:auto; }
+    .cart-item { display:flex; gap:12px; align-items:center; padding:10px 0; border-bottom:1px solid rgba(255,255,255,.12); }
+    .cart-item img { width:56px; height:56px; object-fit:cover; border-radius:8px; }
+    .cart-item-info { flex:1; }
+    .cart-item-info small { opacity:.75; display:block; }
+    .cart-total { display:flex; justify-content:space-between; font-weight:600; margin:12px 0; }
+    .mini-modal { max-width:560px; }
+    .modal-card .field { margin-bottom:12px; }
+    .modal-card input, .modal-card select, .modal-card textarea { width:100%; }
+    .detail-360-bar { display:flex; align-items:center; gap:8px; margin-top:8px; }
+    .detail-360-bar input[type=range] { flex:1; }
+  </style>
+</head>
+<body>
+  <canvas id="particles"></canvas>
+  <div class="cursor-glow" id="cursorGlow"></div>
+  <header class="site-header" id="siteHeader">
+    <div class="container nav-wrap">
+      <a href="index.html#home" class="brand">
+        <span class="brand-mark">LF</span>
+        <span class="brand-text" data-i18n="brand">Lebougui Family</span>
+      </a>
+      <nav class="nav" id="nav">
+        <a href="index.html#home" data-i18n="nav_home">Home</a>
+        <a href="index.html#about" data-i18n="nav_about">About</a>
+        <a href="all-shoes.html" data-i18n="nav_all_shoes">All Shoes</a>
+        <a href="index.html#services" data-i18n="nav_services">Services</a>
+        <a href="index.html#contact" data-i18n="nav_contact">Contact</a>
+      </nav>
+      <div class="lang-switch" id="langSwitch">
+        <button data-lang="en" class="active">EN</button>
+        <button data-lang="fr">FR</button>
+        <button data-lang="wo">WO</button>
+        <button data-lang="es">ES</button>
+        <button data-lang="it">IT</button>
+        <button data-lang="de">DE</button>
+      </div>
+    </div>
+  </header>
+  <main>
+    <section class="all-shoes-header">
+      <div class="container">
+        <div class="section-head reveal">
+          <h2 class="section-title neon-underline" data-i18n="all_shoes_title">All Shoes</h2>
+          <p class="section-lead" data-i18n="all_shoes_lead">Browse all creations</p>
+        </div>
+        <div class="filter-chips reveal" id="filterChips">
+          <button class="chip-btn active" data-filter="all" data-i18n="filter_all">All</button>
+          <button class="chip-btn" data-filter="furniture" data-i18n="filter_furniture">Shoes</button>
+          <button class="chip-btn" data-filter="doors" data-i18n="filter_doors">Boots</button>
+          <button class="chip-btn" data-filter="decor" data-i18n="filter_decor">Leather Goods</button>
+        </div>
+        <div class="gallery-grid" id="galleryGrid"></div>
+        <div class="empty-state" id="emptyState">
+          <p data-i18n="empty_title">No creations yet</p>
+        </div>
+      </div>
+    </section>
+  </main>
+  <button class="btn btn-primary cart-btn" id="cartBtn">🛒 <span data-i18n="cart">Cart</span> <span class="cart-badge" id="cartBadge">0</span></button>
+  <div class="toast" id="toast"></div>
+
+  <!-- Product detail -->
+  <div class="modal" id="detailModal" aria-hidden="true">
+    <div class="modal-backdrop" id="detailBackdrop"></div>
+    <div class="detail-card glass">
+      <button class="modal-close" id="detailClose" aria-label="Close">✕</button>
+      <div class="detail-media">
+        <div class="zoom-viewport" id="zoomViewport">
+          <img id="detailImg" src="" alt="" />
+        </div>
+        <div class="detail-360-bar" id="bar360" style="display:none">
+          <span>360°</span>
+          <input type="range" id="spin360" min="0" max="1" value="0" step="1" />
+        </div>
+        <div class="zoom-controls">
+          <button id="zoomOut">−</button>
+          <span id="zoomLevel">100%</span>
+          <button id="zoomIn">+</button>
+          <button id="zoomReset" data-i18n="reset">Reset</button>
+          <button id="view360" title="360 view">360°</button>
+        </div>
+        <p class="view360-hint" id="view360Hint" data-i18n="view360_hint">Drag left/right to spin the product</p>
+      </div>
+      <div class="detail-info">
+        <h3 id="detailName"></h3>
+        <div class="pc-price" id="detailPrice"></div>
+        <p id="detailDesc"></p>
+        <div class="detail-meta">
+          <span class="pc-cat" id="detailCat"></span>
+          <span id="detailDate"></span>
+        </div>
+        <div class="order-box">
+          <div class="field" id="colorField" style="display:none">
+            <label data-i18n="color">Color</label>
+            <div class="color-picker" id="colorPicker"></div>
+          </div>
+          <div class="field-row">
+            <div class="field">
+              <label data-i18n="order_model">Model</label>
+              <select id="orderModel">
+                <option value="Man" data-i18n="order_man">Man</option>
+                <option value="Woman" data-i18n="order_woman">Woman</option>
+                <option value="Boy" data-i18n="order_boy">Boy</option>
+                <option value="Girl" data-i18n="order_girl">Girl</option>
+                <option value="Kid" data-i18n="order_kid">Kid</option>
+              </select>
+            </div>
+            <div class="field">
+              <label data-i18n="order_size">Size</label>
+              <select id="orderSize">
+                <option>15</option><option>16</option><option>17</option><option>18</option><option>19</option><option>20</option><option>21</option><option>22</option><option>23</option><option>24</option><option>25</option><option>26</option><option>27</option><option>28</option><option>29</option><option>30</option><option>31</option><option>32</option><option>33</option><option>34</option><option>35</option><option>36</option><option>37</option><option>38</option><option>39</option><option>40</option><option>41</option><option>42</option><option>43</option><option>44</option><option>45</option><option>46</option><option>47</option><option>48</option><option>49</option><option>50</option>
+              </select>
+            </div>
+          </div>
+          <div class="field">
+            <label data-i18n="order_qty">Quantity</label>
+            <input type="number" id="orderQty" min="1" value="1" />
+          </div>
+          <div class="field-row">
+            <button class="btn btn-primary" id="addToCartBtn" style="flex:1;justify-content:center" data-i18n="add_to_cart">Add to Cart</button>
+            <button class="btn btn-ghost" id="buyNowBtn" style="flex:1;justify-content:center" data-i18n="buy_now">Buy Now</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Cart modal -->
+  <div class="modal" id="cartModal" aria-hidden="true">
+    <div class="modal-backdrop" id="cartBackdrop"></div>
+    <div class="modal-card glass mini-modal">
+      <button class="modal-close" id="cartClose">✕</button>
+      <h3 class="modal-title" data-i18n="cart_title">Your Cart</h3>
+      <ul class="cart-list" id="cartList"></ul>
+      <div class="cart-total"><span data-i18n="total">Total</span><span id="cartTotal">0 FCFA</span></div>
+      <div class="modal-actions">
+        <button class="btn btn-ghost" id="cartClearBtn" data-i18n="clear_cart">Clear</button>
+        <button class="btn btn-primary" id="cartCheckoutBtn" data-i18n="checkout">Checkout</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Checkout modal -->
+  <div class="modal" id="checkoutModal" aria-hidden="true">
+    <div class="modal-backdrop" id="checkoutBackdrop"></div>
+    <div class="modal-card glass mini-modal">
+      <button class="modal-close" id="checkoutClose">✕</button>
+      <h3 class="modal-title" data-i18n="checkout_title">Complete Your Order</h3>
+      <form id="checkoutForm">
+        <div class="field">
+          <label data-i18n="checkout_name">Your name</label>
+          <input type="text" id="coName" required />
+        </div>
+        <div class="field">
+          <label data-i18n="checkout_phone">Phone / WhatsApp</label>
+          <input type="tel" id="coPhone" required />
+        </div>
+        <div class="field">
+          <label data-i18n="checkout_email">Email (optional)</label>
+          <input type="email" id="coEmail" />
+        </div>
+        <div class="field">
+          <label data-i18n="checkout_address">Delivery address (optional)</label>
+          <input type="text" id="coAddress" />
+        </div>
+        <div class="field">
+          <label data-i18n="checkout_notes">Notes (optional)</label>
+          <textarea id="coNotes" rows="3"></textarea>
+        </div>
+        <div class="cart-total"><span data-i18n="total">Total</span><span id="checkoutTotal">0 FCFA</span></div>
+        <div class="modal-actions">
+          <button type="button" class="btn btn-ghost" id="checkoutCancel" data-i18n="btn_cancel">Cancel</button>
+          <button type="submit" class="btn btn-primary" data-i18n="checkout_send">Send Order</button>
+        </div>
+        <p class="form-status" id="checkoutStatus"></p>
+      </form>
+    </div>
+  </div>
+
+  <script src="api-config.js"></script>
+  <script src="i18n.js"></script>
+  <script src="particles.js"></script>
+  <script src="all-shoes.js"></script>
+</body>
+</html>
