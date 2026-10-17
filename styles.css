@@ -540,7 +540,8 @@ body.is-admin .pc-edit { display: inline-block; }
   position: relative;
   width: min(1000px, 95vw);
   max-height: 90vh;
-  overflow: hidden;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
   display: grid;
   grid-template-columns: 1.3fr 1fr;
   padding: 0;
@@ -578,7 +579,7 @@ body.is-admin .pc-edit { display: inline-block; }
 .zoom-controls button:hover { border-color: var(--cyan); color: var(--cyan); }
 #zoomLevel { font-size: 0.85rem; color: var(--muted); min-width: 52px; text-align: center; }
 .zoom-controls button.active-360 { border-color: var(--cyan); color: var(--cyan); box-shadow: 0 0 12px rgba(255,215,0,0.35); }
-.detail-info { padding: 28px 26px; display: flex; flex-direction: column; gap: 12px; overflow-y: auto; }
+.detail-info { padding: 28px 26px; display: flex; flex-direction: column; gap: 12px; overflow-y: visible; }
 .detail-info h3 { font-family: var(--font-display); font-size: 1.6rem; margin: 0; }
 .detail-info .pc-price { font-size: 1.1rem; }
 .detail-info p { color: var(--muted); font-size: 0.92rem; margin: 0; }
@@ -587,7 +588,7 @@ body.is-admin .pc-edit { display: inline-block; }
 
 @media (max-width: 800px){
   .detail-card { grid-template-columns: 1fr; max-height: 96vh; overflow-y: auto; -webkit-overflow-scrolling: touch; }
-  .detail-info { overflow-y: visible; -webkit-overflow-scrolling: touch; }
+  .detail-info { overflow-y: visible; }
   .zoom-viewport { touch-action: pan-x pan-y; }
 }
 
