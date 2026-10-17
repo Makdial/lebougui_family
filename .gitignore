@@ -9,3 +9,10 @@ desktop.ini
 
 # Logs
 *.log
+
+# Node / Wrangler
+node_modules/
+.wrangler/
+.dev.vars
+.env
+.env.*

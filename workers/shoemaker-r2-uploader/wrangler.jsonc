@@ -1,0 +1,15 @@
+{
+  "name": "shoemaker-r2-uploader",
+  "main": "src/index.js",
+  "compatibility_date": "2025-10-16",
+  "account_id": "a167c29210dd48604139722a347ac48c",
+  "r2_buckets": [
+    {
+      "binding": "MEDIA",
+      "bucket_name": "lebouguifamily"
+    }
+  ],
+  "vars": {
+    "EXTRA_ORIGINS": "https://lebouguifamily.com,https://www.lebouguifamily.com,https://lebougui-family.pages.dev"
+  }
+}

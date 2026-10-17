@@ -1,0 +1,27 @@
+{
+  "name": "shoemaker-orders-api",
+  "main": "src/index.js",
+  "compatibility_date": "2025-10-16",
+  "account_id": "a167c29210dd48604139722a347ac48c",
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "shoemaker-db",
+      "database_id": "94dae15e-285e-4f66-9216-660b4e515e86"
+    }
+  ],
+  "r2_buckets": [
+    {
+      "binding": "MEDIA",
+      "bucket_name": "lebouguifamily"
+    }
+  ],
+  "vars": {
+    "ADMIN_EMAIL": "radtou86@gmail.com",
+    "FROM_EMAIL": "no-reply@lebouguifamily.com",
+    "SITE_URL": "https://lebouguifamily.com",
+    "NTFY_SERVER": "https://ntfy.sh",
+    "NTFY_TOPIC": "lebougui-orders-a167c292",
+    "EXTRA_ORIGINS": "https://lebouguifamily.com,https://www.lebouguifamily.com,https://lebougui-family.pages.dev"
+  }
+}
