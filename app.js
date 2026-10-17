@@ -27,7 +27,7 @@
           desc: p.desc,
           image: p.image,
           colors: (function(){ try { return JSON.parse(p.colors||'[]'); } catch(e){ return []; } })(),
-          images_360: p.images_360 || '[]',
+          images_360: toFramesArray(p.images_360),
           has_360: !!p.has_360,
           date: p.created_at || p.date
         }));
@@ -38,6 +38,84 @@
   function saveProducts(){
     try { localStorage.setItem(STORAGE_KEY, JSON.stringify(products)); }
     catch(e){ showToast(window.t('toast_toobig')); }
+  }
+
+  // ---------- Shared helpers ----------
+  // images_360 may arrive as an array, a JSON string, or a double-encoded JSON
+  // string (older records). Always normalize to a real array of URLs.
+  function toFramesArray(v){
+    if(Array.isArray(v)) return v.filter(Boolean);
+    if(typeof v === 'string'){
+      try {
+        const parsed = JSON.parse(v);
+        if(Array.isArray(parsed)) return parsed.filter(Boolean);
+        if(typeof parsed === 'string') return toFramesArray(parsed);
+      } catch(e){ return []; }
+    }
+    return [];
+  }
+
+  // Describe upload failures in a way the admin can act on.
+  function describeUploadError(err){
+    if(err && err.name === 'TypeError'){
+      return window.t('toast_neterr') || 'Cannot reach the upload server (network or CORS blocked).';
+    }
+    return (err && err.message) || '';
+  }
+
+  // Downscale / re-encode big photos in the browser so uploads never fail on
+  // file size (phone photos are often 3–10 MB).
+  async function compressImage(file, opts){
+    opts = opts || {};
+    const maxDim = opts.maxDim || 1800;
+    const quality = typeof opts.quality === 'number' ? opts.quality : 0.85;
+    const maxBytes = opts.maxBytes || MAX_IMG;
+    const minBytes = typeof opts.minBytes === 'number' ? opts.minBytes : Math.min(1536 * 1024, maxBytes);
+    if(!file || !file.type || !file.type.startsWith('image/')) return file;
+    if(file.size <= minBytes) return file; // small enough — keep the original bytes
+    let url = null;
+    try {
+      url = URL.createObjectURL(file);
+      const img = await new Promise((resolve, reject) => {
+        const el = new Image();
+        el.onload = () => resolve(el);
+        el.onerror = () => reject(new Error('could not read this image'));
+        el.src = url;
+      });
+      let w = img.naturalWidth || img.width;
+      let h = img.naturalHeight || img.height;
+      if(!w || !h) return file;
+      const scale = Math.min(1, maxDim / Math.max(w, h));
+      w = Math.max(1, Math.round(w * scale));
+      h = Math.max(1, Math.round(h * scale));
+      const canvas = document.createElement('canvas');
+      canvas.width = w; canvas.height = h;
+      const ctx = canvas.getContext('2d');
+      ctx.fillStyle = '#fff';
+      ctx.fillRect(0, 0, w, h);
+      ctx.drawImage(img, 0, 0, w, h);
+      let q = quality;
+      let blob = await new Promise(res => canvas.toBlob(res, 'image/jpeg', q));
+      if(blob && blob.size > maxBytes){
+        // second pass: smaller dimensions + lower quality
+        const s = Math.max(0.25, Math.min(1, Math.sqrt(maxBytes / blob.size) * 0.95));
+        const w2 = Math.max(1, Math.round(canvas.width * s));
+        const h2 = Math.max(1, Math.round(canvas.height * s));
+        canvas.width = w2; canvas.height = h2;
+        ctx.fillStyle = '#fff';
+        ctx.fillRect(0, 0, w2, h2);
+        ctx.drawImage(img, 0, 0, w2, h2);
+        q = Math.max(0.5, q - 0.15);
+        blob = await new Promise(res => canvas.toBlob(res, 'image/jpeg', q));
+      }
+      if(!blob) return file;
+      const name = String(file.name || 'photo').replace(/\.[^.]+$/, '') + '.jpg';
+      return new File([blob], name, { type: 'image/jpeg', lastModified: Date.now() });
+    } catch(e){
+      return file; // fall back to the original file rather than failing the upload
+    } finally {
+      if(url) URL.revokeObjectURL(url);
+    }
   }
 
   // ---------- Gallery render ----------
@@ -126,13 +204,14 @@
     const colorsInput = document.getElementById('uplColors');
     if(colorsInput){ colorsInput.value = colorsArr.join(', '); colorsInput.dispatchEvent(new Event('input')); }
     // show existing image as current data + preview
+    currentFileBlob = null;
     currentFileData = prod.image || null;
     const prev = document.getElementById('previewImg');
     if(prod.image){ prev.src = prod.image; prev.hidden = false; document.getElementById('dropInner').hidden = true; document.getElementById('uploadDrop').classList.add('has-img'); }
     current360Files = [];
     const info = document.getElementById('upl360Info');
     if(info){
-      const n = (function(){ try { return JSON.parse(prod.images_360||'[]').length; } catch(e){ return 0; } })();
+      const n = toFramesArray(prod.images_360).length;
       info.textContent = n ? (n + ' ' + (window.t('frames_existing') || 'existing frames kept unless you choose new ones')) : '';
     }
     const title = document.getElementById('uploadTitle');
@@ -149,7 +228,9 @@
     prev.hidden = true; prev.src = '';
     document.getElementById('dropInner').hidden = false;
     document.getElementById('uploadDrop').classList.remove('has-img');
+    if(previewObjectUrl){ try { URL.revokeObjectURL(previewObjectUrl); } catch(e){} previewObjectUrl = null; }
     currentFileData = null;
+    currentFileBlob = null;
     current360Files = [];
     editingId = null;
     editingProd = null;
@@ -173,6 +254,17 @@
   fileInput.addEventListener('change', (e) => handleFile(e.target.files[0]));
   const files360 = document.getElementById('upl360Files');
   if(files360) files360.addEventListener('change', (e) => handle360Files(e.target.files));
+  const clear360 = document.getElementById('upl360Clear');
+  if(clear360) clear360.addEventListener('click', () => {
+    current360Files = [];
+    if(files360) files360.value = '';
+    const info = document.getElementById('upl360Info');
+    if(!info) return;
+    const existing = editingProd ? toFramesArray(editingProd.images_360).length : 0;
+    info.textContent = existing
+      ? (existing + ' ' + (window.t('frames_existing') || 'existing frames kept unless you choose new ones'))
+      : (window.t('frames_none') || 'No frames chosen — the 360° spin is optional and will be skipped.');
+  });
   ['dragenter','dragover'].forEach(ev => drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.add('drag'); }));
   ['dragleave','drop'].forEach(ev => drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.remove('drag'); }));
   drop.addEventListener('drop', e => {
@@ -180,31 +272,55 @@
     if(f) handleFile(f);
   });
 
-  let currentFileData = null;
-  function handleFile(file){
+  let currentFileData = null;   // preview src for the main photo (object URL, or the remote URL when editing)
+  let currentFileBlob = null;   // a newly chosen main photo that still has to be uploaded
+  let previewObjectUrl = null;
+
+  async function handleFile(file){
     if(!file) return;
-    if(!file.type.startsWith('image/')) return;
-    if(file.size > MAX_IMG){ showToast(window.t('toast_toobig')); return; }
-    const reader = new FileReader();
-    reader.onload = (ev) => {
-      currentFileData = ev.target.result;
+    if(!file.type || !file.type.startsWith('image/')){
+      showToast(window.t('toast_notimg') || 'Please pick an image file (PNG, JPG, WEBP).');
+      return;
+    }
+    try {
+      const prepared = await compressImage(file, { maxDim: 1800, quality: 0.85, maxBytes: MAX_IMG });
+      if(previewObjectUrl){ try { URL.revokeObjectURL(previewObjectUrl); } catch(e){} previewObjectUrl = null; }
+      currentFileBlob = prepared;
+      currentFileData = URL.createObjectURL(prepared);
+      previewObjectUrl = currentFileData;
       const prev = document.getElementById('previewImg');
       prev.src = currentFileData;
       prev.hidden = false;
       document.getElementById('dropInner').hidden = true;
       drop.classList.add('has-img');
-    };
-    reader.readAsDataURL(file);
+    } catch(err){
+      console.error(err);
+      showToast((window.t('toast_uploadfail') || 'Could not read the photo') + ': ' + (err.message || ''));
+    }
   }
 
-  // 360 spin frames (optional, multiple images)
+  // 360 spin frames — OPTIONAL: when nothing is chosen the product simply has no spin.
   let current360Files = [];
-  function handle360Files(fileList){
-    if(!fileList || !fileList.length){ return; }
-    const files = Array.from(fileList).filter(f => f.type.startsWith('image/') && f.size <= MAX_IMG).slice(0, 48);
-    current360Files = files;
+  async function handle360Files(fileList){
+    if(!fileList || !fileList.length) return;
+    const all = Array.from(fileList);
+    const images = all.filter(f => f && f.type && f.type.startsWith('image/'));
+    const skipped = all.length - images.length;
     const info = document.getElementById('upl360Info');
-    if(info) info.textContent = files.length + ' ' + (window.t('frames_selected') || 'frames selected');
+    if(info) info.textContent = (window.t('frames_preparing') || 'Preparing photos…');
+    const prepared = [];
+    for(const f of images.slice(0, 48)){
+      try {
+        prepared.push(await compressImage(f, { maxDim: 1280, quality: 0.8, maxBytes: MAX_IMG, minBytes: 1024 * 1024 }));
+      } catch(e){ prepared.push(f); }
+    }
+    current360Files = prepared.filter(Boolean);
+    if(info){
+      info.textContent = current360Files.length
+        ? current360Files.length + ' ' + (window.t('frames_selected') || 'frames selected')
+        : (window.t('frames_none') || 'No frames chosen — the 360° spin is optional and will be skipped.');
+    }
+    if(skipped > 0) showToast((window.t('toast_notimg') || 'Only image files are accepted') + ' (' + skipped + ')');
   }
 
   // Reusable R2 upload via the upload Worker (direct binding upload)
@@ -248,35 +364,37 @@
     const prevLabel = saveBtn ? saveBtn.textContent : '';
     const setBusy = (busy, txt) => { if(saveBtn){ saveBtn.disabled = busy; saveBtn.textContent = busy ? (txt || 'Saving…') : prevLabel; } };
 
-    // Main image -> R2 (only if a NEW data-URL image was chosen)
-    if(String(prod.image).startsWith('data:')){
+    // Main image -> R2 (only when a NEW photo was chosen in this session)
+    if(currentFileBlob){
       setBusy(true);
       try {
-        const blob = await (await fetch(prod.image)).blob();
-        const file = new File([blob], "product.jpg", { type: blob.type || "image/jpeg" });
-        prod.image = await uploadToR2(file, file.name, "products");
+        prod.image = await uploadToR2(currentFileBlob, currentFileBlob.name || "product.jpg", "products");
       } catch (err) {
         console.error(err);
         setBusy(false);
-        showToast((window.t('toast_uploadfail') || 'Image upload failed') + ": " + (err.message || ""));
+        showToast((window.t('toast_uploadfail') || 'Image upload failed') + ": " + describeUploadError(err));
         return;
       }
     }
 
-    // 360 spin frames -> R2 (keep existing ones when editing and no new frames chosen)
-    let images360 = (isEdit && editingProd) ? (function(){ try { return JSON.parse(editingProd.images_360||'[]'); } catch(e){ return []; } })() : [];
+    // 360 spin frames -> R2. Optional: skipped completely when none are chosen.
+    // When editing and no new frames are picked, the existing ones are kept.
+    let images360 = (isEdit && editingProd) ? toFramesArray(editingProd.images_360) : [];
     if(current360Files.length){
       setBusy(true, 'Uploading 360° frames…');
-      images360 = [];
+      const fresh = [];
       try {
-        for(const f of current360Files){
+        for(let i = 0; i < current360Files.length; i++){
+          const f = current360Files[i];
+          setBusy(true, 'Uploading ' + (i + 1) + '/' + current360Files.length + '…');
           const url = await uploadToR2(f, f.name, "products/360");
-          images360.push(url);
+          fresh.push(url);
         }
+        images360 = fresh;
       } catch(err){
         console.error(err);
         setBusy(false);
-        showToast((window.t('toast_uploadfail') || 'Image upload failed') + ": " + (err.message || ""));
+        showToast((window.t('toast_uploadfail') || 'Image upload failed') + ": " + describeUploadError(err));
         return;
       }
     }
@@ -755,7 +873,7 @@
             body: JSON.stringify({
               id: p.id, name: p.name, category: p.category, price: p.price,
               desc: p.desc, image: p.image,
-              colors: p.colors || [], images_360: p.images_360 || [], has_360: !!p.has_360
+              colors: p.colors || [], images_360: toFramesArray(p.images_360), has_360: toFramesArray(p.images_360).length > 0
             })
           });
           if(r.ok) ok++;

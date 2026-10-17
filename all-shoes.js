@@ -55,7 +55,18 @@
   function escapeHtml(s){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
   function formatDate(iso){try{return new Date(iso).toLocaleDateString();}catch(e){return iso;}}
   function parseColors(p){ try { return JSON.parse(p.colors||'[]'); } catch(e){ return []; } }
-  function parseFrames(p){ try { return JSON.parse(p.images_360||'[]'); } catch(e){ return []; } }
+  function parseFrames(p){
+    const v = p && p.images_360;
+    if(Array.isArray(v)) return v.filter(Boolean);
+    if(typeof v === 'string'){
+      try {
+        const parsed = JSON.parse(v);
+        if(Array.isArray(parsed)) return parsed.filter(Boolean);
+        if(typeof parsed === 'string') return parseFrames({ images_360: parsed });
+      } catch(e){ return []; }
+    }
+    return [];
+  }
 
   // ---------- Detail ----------
   const detailModal=document.getElementById('detailModal');

@@ -316,15 +316,18 @@
             <div class="drop-inner" id="dropInner">
               <div class="drop-icon">📷</div>
               <p data-i18n="upl_drop">Click or drag a photo here</p>
-              <small>PNG, JPG, WEBP — max 2 MB</small>
+              <small data-i18n="upl_photo_help">PNG, JPG, WEBP — large photos are resized automatically</small>
             </div>
             <img id="previewImg" class="preview-img" alt="preview" hidden />
           </div>
         </div>
         <div class="field">
-          <label data-i18n="upl_360">360° spin frames (optional)</label>
+          <label data-i18n="upl_360">360° spin frames (optional — you can skip this)</label>
           <input type="file" id="upl360Files" accept="image/*" multiple />
-          <small><span data-i18n="upl_360_help">Select 8–36 photos taken around the shoe, in order, for a 360° spin.</span> <strong id="upl360Info"></strong></small>
+          <small><span data-i18n="upl_360_help">Optional. Add 8–36 photos taken around the shoe, in order, for a 360° spin. Leave empty to skip — the creation is saved without a spin.</span> <strong id="upl360Info"></strong></small>
+          <div style="margin-top:8px">
+            <button type="button" class="btn btn-ghost btn-sm" id="upl360Clear" data-i18n="upl_360_clear">Skip / clear frames</button>
+          </div>
         </div>
         <div class="modal-actions">
           <button type="button" class="btn btn-ghost" id="modalCancel" data-i18n="btn_cancel">Cancel</button>
