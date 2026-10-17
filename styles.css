@@ -586,8 +586,9 @@ body.is-admin .pc-edit { display: inline-block; }
 .detail-meta .pc-cat { position: static; }
 
 @media (max-width: 800px){
-  .detail-card { grid-template-columns: 1fr; max-height: 92vh; }
-  .zoom-viewport { min-height: 260px; }
+  .detail-card { grid-template-columns: 1fr; max-height: 96vh; overflow-y: auto; -webkit-overflow-scrolling: touch; }
+  .detail-info { overflow-y: visible; -webkit-overflow-scrolling: touch; }
+  .zoom-viewport { touch-action: pan-x pan-y; }
 }
 
 /* Order box */
