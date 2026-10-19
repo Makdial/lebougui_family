@@ -468,6 +468,33 @@
     detailImg.src = prod.image;
     detailImg.alt = prod.name;
     resetZoom();
+
+    // colors
+    const colors = (function(){ try { return JSON.parse(prod.colors||'[]'); } catch(e){ return []; } })();
+    const picker = document.getElementById('colorPicker');
+    const colorField = document.getElementById('colorField');
+    if(picker && colorField){
+      picker.innerHTML = '';
+      if(colors.length > 0){
+        currentColor = colors[0];
+        colorField.style.display = '';
+        colors.forEach(c => {
+          const b = document.createElement('button');
+          b.className = 'color-swatch' + (c === currentColor ? ' active' : '');
+          b.style.background = c;
+          b.onclick = () => {
+            currentColor = c;
+            picker.querySelectorAll('.color-swatch').forEach(x => x.classList.remove('active'));
+            b.classList.add('active');
+          };
+          picker.appendChild(b);
+        });
+      } else {
+        currentColor = '';
+        colorField.style.display = 'none';
+      }
+    }
+
     detailModal.classList.add('open');
     detailModal.setAttribute('aria-hidden','false');
     document.body.style.overflow = 'hidden';
@@ -542,7 +569,7 @@
   });
 
   // ---------- Localized order messages ----------
-  function getOrderText(lang, channel, prod, model, size, qty){
+  function getOrderText(lang, channel, prod, model, size, qty, color){
     const cat = (typeof window.t === 'function') ? window.t('filter_' + prod.category) : prod.category;
     const price = prod.price || 'N/A';
     const imageNote = {
@@ -552,6 +579,15 @@
       es: '(foto del producto adjunta)',
       it: '(foto del prodotto allegata)'
     }[lang] || '(product photo attached)';
+    const colorLine = color ? (color.startsWith('#') ? color : color) : '';
+    const colorLabel = {
+      en: 'Color',
+      fr: 'Couleur',
+      wo: 'Color',
+      es: 'Color',
+      it: 'Colore',
+      de: 'Farbe'
+    }[lang] || 'Color';
 
     const templates = {
       en: {
@@ -563,6 +599,7 @@
         'Image: ' + imageNote + '\\n' +
         'Model/Gender: ' + model + '\\n' +
         'Size: ' + size + '\\n' +
+        (colorLine ? (colorLabel + ': ' + colorLine + '\\n') : '') +
         'Quantity: ' + qty + '\\n' +
         'Price: ' + price + '\\n\\n' +
         'Please confirm availability and delivery.\\n\\n' +
@@ -577,6 +614,7 @@
         'Image : ' + imageNote + '\\n' +
         'Modèle/Genre : ' + model + '\\n' +
         'Taille : ' + size + '\\n' +
+        (colorLine ? (colorLabel + ' : ' + colorLine + '\\n') : '') +
         'Quantité : ' + qty + '\\n' +
         'Prix : ' + price + '\\n\\n' +
         'Merci de confirmer la disponibilité et la livraison.\\n\\n' +
@@ -591,6 +629,7 @@
         'Image : ' + imageNote + '\\n' +
         'Modèle/Genre : ' + model + '\\n' +
         'Taille : ' + size + '\\n' +
+        (colorLine ? (colorLabel + ' : ' + colorLine + '\\n') : '') +
         'Quantité : ' + qty + '\\n' +
         'Prix : ' + price + '\\n\\n' +
         'Merci confirmer disponibilité ak livraison.\\n\\n' +
@@ -605,6 +644,7 @@
         'Imagen: ' + imageNote + '\\n' +
         'Modelo/Género: ' + model + '\\n' +
         'Talla: ' + size + '\\n' +
+        (colorLine ? (colorLabel + ': ' + colorLine + '\\n') : '') +
         'Cantidad: ' + qty + '\\n' +
         'Precio: ' + price + '\\n\\n' +
         'Por favor confirma disponibilidad y entrega.\\n\\n' +
@@ -619,6 +659,7 @@
         'Immagine: ' + imageNote + '\\n' +
         'Modello/Genere: ' + model + '\\n' +
         'Taglia: ' + size + '\\n' +
+        (colorLine ? (colorLabel + ': ' + colorLine + '\\n') : '') +
         'Quantità: ' + qty + '\\n' +
         'Prezzo: ' + price + '\\n\\n' +
         'Per favore conferma disponibilità e consegna.\\n\\n' +
@@ -634,6 +675,7 @@
         'Bild: ' + imageNote + '\\n' +
         'Modell/Geschlecht: ' + model + '\\n' +
         'Größe: ' + size + '\\n' +
+        (colorLine ? (colorLabel + ': ' + colorLine + '\\n') : '') +
         'Menge: ' + qty + '\\n' +
         'Preis: ' + price + '\\n\\n' +
         'Bitte bestätigen Sie Verfügbarkeit und Lieferung.\\n\\n' +
@@ -653,7 +695,7 @@
       const size = document.getElementById('orderSize').value;
       const qty = document.getElementById('orderQty').value || '1';
       const lang = (window.I18N && window.I18N.current) ? window.I18N.current : 'en';
-      const localized = getOrderText(lang, 'email', prod, model, size, qty);
+      const localized = getOrderText(lang, 'email', prod, model, size, qty, currentColor);
       window.location.href = 'mailto:radtou86@gmail.com?subject=' + encodeURIComponent(localized.subject) + '&body=' + encodeURIComponent(localized.body);
       const st = document.getElementById('orderStatus');
       st.textContent = (typeof window.t === 'function') ? window.t('form_sent') : 'Email client opened.';
@@ -680,7 +722,7 @@
       const size = document.getElementById('orderSize').value;
       const qty = document.getElementById('orderQty').value || '1';
       const lang = (window.I18N && window.I18N.current) ? window.I18N.current : 'en';
-      const localized = getOrderText(lang, 'wa', prod, model, size, qty);
+      const localized = getOrderText(lang, 'wa', prod, model, size, qty, currentColor);
       try {
         const res = await fetch(prod.image);
         const blob = await res.blob();
@@ -706,7 +748,7 @@
       const size = document.getElementById('orderSize').value;
       const qty = document.getElementById('orderQty').value || '1';
       const lang = (window.I18N && window.I18N.current) ? window.I18N.current : 'en';
-      const localized = getOrderText(lang, 'wa', prod, model, size, qty);
+      const localized = getOrderText(lang, 'wa', prod, model, size, qty, currentColor);
       const text = encodeURIComponent(localized.body);
       window.open('https://wa.me/221775348003?text=' + text, '_blank');
       const st = document.getElementById('orderStatus');
